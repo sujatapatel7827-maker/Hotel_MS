@@ -43,7 +43,7 @@ A premium, feature-rich desktop application for managing hotel operations. Built
 ### Installation & Setup
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/Hotel_MS.git
+   git clone https://github.com/sujatapatel7827-maker/Hotel_MS.git
    ```
 2. **Setup Database:**
    - Create a database named `hotel_ms`.
