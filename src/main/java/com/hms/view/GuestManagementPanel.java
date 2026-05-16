@@ -4,6 +4,7 @@ import com.hms.dao.GuestDAO;
 import com.hms.model.Guest;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
@@ -21,14 +22,31 @@ public class GuestManagementPanel extends JPanel {
     }
 
     private void initComponents() {
-        setLayout(new BorderLayout());
+        setLayout(new GridBagLayout());
         setOpaque(false);
+
+        // Main Glass Card
+        JPanel mainCard = new JPanel(new BorderLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(15, 32, 64, 180)); // Midnight Blue Glass
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
+                g2.dispose();
+            }
+        };
+        mainCard.setOpaque(false);
+        mainCard.setPreferredSize(new Dimension(900, 600));
+        mainCard.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         // Header
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
-        JLabel lblTitle = new JLabel("Guest Management");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        UIManager.put("Label.foreground", Color.WHITE);
+        JLabel lblTitle = new JLabel("GUEST MANAGEMENT");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 36));
+        lblTitle.setForeground(Color.WHITE);
         header.add(lblTitle, BorderLayout.WEST);
 
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -73,8 +91,6 @@ public class GuestManagementPanel extends JPanel {
 
         header.add(actionPanel, BorderLayout.EAST);
 
-        add(header, BorderLayout.NORTH);
-
         // Table
         String[] columns = {"ID", "Full Name", "Phone", "Email", "ID Proof"};
         tableModel = new DefaultTableModel(columns, 0) {
@@ -89,9 +105,39 @@ public class GuestManagementPanel extends JPanel {
         guestTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         guestTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
 
+        guestTable.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        guestTable.setForeground(Color.WHITE);
+        guestTable.setGridColor(new Color(255, 255, 255, 50));
+        
+        guestTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        guestTable.getTableHeader().setBackground(new Color(25, 50, 100));
+        guestTable.getTableHeader().setForeground(Color.WHITE);
+        
+        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    c.setBackground(new Color(0, 0, 0, 100));
+                    c.setForeground(Color.WHITE);
+                } else {
+                    c.setBackground(new Color(0, 150, 255, 150));
+                    c.setForeground(Color.WHITE);
+                }
+                return c;
+            }
+        };
+        guestTable.setDefaultRenderer(Object.class, renderer);
+
         JScrollPane scrollPane = new JScrollPane(guestTable);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
-        add(scrollPane, BorderLayout.CENTER);
+        
+        mainCard.add(header, BorderLayout.NORTH);
+        mainCard.add(scrollPane, BorderLayout.CENTER);
+        
+        add(mainCard, new GridBagConstraints());
     }
 
     private void filterTable(String query) {
@@ -138,12 +184,13 @@ public class GuestManagementPanel extends JPanel {
     private void showAddGuestDialog(Guest existingGuest) {
         String title = (existingGuest == null) ? "Register New Guest" : "Update Guest ID " + existingGuest.getId();
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), title, true);
+        dialog.getContentPane().setBackground(new Color(15, 32, 64)); // Match Midnight Blue
         dialog.setLayout(new GridBagLayout());
-        dialog.setSize(450, 450);
+        dialog.setSize(450, 500);
         dialog.setLocationRelativeTo(this);
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.insets = new Insets(10, 15, 10, 15);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         JTextField txtFirst = new JTextField(15);
@@ -152,6 +199,10 @@ public class GuestManagementPanel extends JPanel {
         JTextField txtPhone = new JTextField(15);
         JTextField txtAddress = new JTextField(15);
         JTextField txtIdProof = new JTextField(15);
+
+        // Styling helper for labels
+        Font labelFont = new Font("Segoe UI", Font.BOLD, 14);
+        Color textColor = Color.WHITE;
 
         if (existingGuest != null) {
             txtFirst.setText(existingGuest.getFirstName());
@@ -163,23 +214,28 @@ public class GuestManagementPanel extends JPanel {
         }
 
         int r = 0;
-        gbc.gridx = 0; gbc.gridy = r++; dialog.add(new JLabel("First Name:"), gbc);
-        gbc.gridx = 1; dialog.add(txtFirst, gbc);
-        gbc.gridx = 0; gbc.gridy = r++; dialog.add(new JLabel("Last Name:"), gbc);
-        gbc.gridx = 1; dialog.add(txtLast, gbc);
-        gbc.gridx = 0; gbc.gridy = r++; dialog.add(new JLabel("Email:"), gbc);
-        gbc.gridx = 1; dialog.add(txtEmail, gbc);
-        gbc.gridx = 0; gbc.gridy = r++; dialog.add(new JLabel("Phone:"), gbc);
-        gbc.gridx = 1; dialog.add(txtPhone, gbc);
-        gbc.gridx = 0; gbc.gridy = r++; dialog.add(new JLabel("Address:"), gbc);
-        gbc.gridx = 1; dialog.add(txtAddress, gbc);
-        gbc.gridx = 0; gbc.gridy = r++; dialog.add(new JLabel("ID Proof No:"), gbc);
-        gbc.gridx = 1; dialog.add(txtIdProof, gbc);
+        String[] labels = {"First Name:", "Last Name:", "Email:", "Phone:", "Address:", "ID Proof No:"};
+        JComponent[] fields = {txtFirst, txtLast, txtEmail, txtPhone, txtAddress, txtIdProof};
 
-        JButton btnSave = new JButton((existingGuest == null) ? "Register" : "Update");
-        btnSave.setBackground(new Color(76, 175, 80));
+        for (int i = 0; i < labels.length; i++) {
+            JLabel lbl = new JLabel(labels[i]);
+            lbl.setFont(labelFont);
+            lbl.setForeground(textColor);
+            gbc.gridx = 0; gbc.gridy = r;
+            dialog.add(lbl, gbc);
+            
+            gbc.gridx = 1;
+            dialog.add(fields[i], gbc);
+            r++;
+        }
+
+        JButton btnSave = new JButton((existingGuest == null) ? "REGISTER GUEST" : "UPDATE GUEST");
+        btnSave.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnSave.setBackground(new Color(46, 204, 113));
         btnSave.setForeground(Color.WHITE);
+        btnSave.setPreferredSize(new Dimension(0, 40));
         gbc.gridx = 0; gbc.gridy = r++; gbc.gridwidth = 2;
+        gbc.insets = new Insets(20, 15, 10, 15);
         dialog.add(btnSave, gbc);
 
         btnSave.addActionListener(e -> {

@@ -4,8 +4,8 @@ import com.hms.dao.RoomDAO;
 import com.hms.model.Room;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.List;
@@ -14,6 +14,10 @@ public class RoomManagementPanel extends JPanel {
     private JTable roomTable;
     private DefaultTableModel tableModel;
     private RoomDAO roomDAO;
+    
+    private JTextField txtRoomNo, txtPrice;
+    private JComboBox<String> cmbRoomType, cmbBedType, cmbAvailable, cmbStatus;
+    private JButton btnAdd, btnUpdate, btnDelete, btnBack;
 
     public RoomManagementPanel() {
         roomDAO = new RoomDAO();
@@ -22,84 +26,219 @@ public class RoomManagementPanel extends JPanel {
     }
 
     private void initComponents() {
-        setLayout(new BorderLayout());
+        setLayout(new GridBagLayout());
         setOpaque(false);
 
-        // Header
-        JPanel header = new JPanel(new BorderLayout());
-        header.setOpaque(false);
-        JLabel lblTitle = new JLabel("Room Management");
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        header.add(lblTitle, BorderLayout.WEST);
-
-        JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        actionPanel.setOpaque(false);
-
-        JTextField txtSearch = new JTextField(15);
-        txtSearch.setToolTipText("Search Room Number...");
-        txtSearch.addKeyListener(new java.awt.event.KeyAdapter() {
-            public void keyReleased(java.awt.event.KeyEvent evt) {
-                filterTable(txtSearch.getText());
-            }
-        });
-        actionPanel.add(new JLabel("Search:"));
-        actionPanel.add(txtSearch);
-
-        JButton btnAddRoom = new JButton("Add Room");
-        btnAddRoom.setBackground(new Color(63, 81, 181));
-        btnAddRoom.setForeground(Color.WHITE);
-        btnAddRoom.addActionListener(e -> showAddRoomDialog(null));
-        actionPanel.add(btnAddRoom);
-
-        JButton btnUpdateRoom = new JButton("Update");
-        btnUpdateRoom.setBackground(new Color(255, 152, 0));
-        btnUpdateRoom.setForeground(Color.WHITE);
-        btnUpdateRoom.addActionListener(e -> {
-            int row = roomTable.getSelectedRow();
-            if (row != -1) {
-                String roomNo = (String) tableModel.getValueAt(row, 0);
-                Room r = roomDAO.getAllRooms().stream().filter(rm -> rm.getRoomNumber().equals(roomNo)).findFirst().orElse(null);
-                showAddRoomDialog(r);
-            } else {
-                JOptionPane.showMessageDialog(this, "Select a room to update!");
-            }
-        });
-        actionPanel.add(btnUpdateRoom);
-
-        JButton btnDeleteRoom = new JButton("Delete Room");
-        btnDeleteRoom.setBackground(new Color(244, 67, 54));
-        btnDeleteRoom.setForeground(Color.WHITE);
-        btnDeleteRoom.addActionListener(e -> handleDeleteRoom());
-        actionPanel.add(btnDeleteRoom);
-
-        header.add(actionPanel, BorderLayout.EAST);
-
-        add(header, BorderLayout.NORTH);
-
-        // Table
-        String[] columns = {"Room Number", "Category", "Status"};
-        tableModel = new DefaultTableModel(columns, 0) {
+        // Main Glass Card
+        JPanel mainCard = new JPanel(new BorderLayout()) {
             @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(15, 32, 64, 180)); // Midnight Blue Glass
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
+                g2.dispose();
             }
         };
+        mainCard.setOpaque(false);
+        mainCard.setPreferredSize(new Dimension(1000, 600));
+        mainCard.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
+        // Split Pane inside Card
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        splitPane.setDividerLocation(400);
+        splitPane.setOpaque(false);
+        splitPane.setBorder(null);
+
+        // Left Panel: Form
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setOpaque(false);
+        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(10, 10, 10, 10);
+        
+        UIManager.put("Label.foreground", Color.WHITE);
+
+        JLabel lblTitle = new JLabel("ROOMS");
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 36));
+        lblTitle.setForeground(Color.WHITE);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2;
+        gbc.insets = new Insets(0, 0, 30, 0);
+        formPanel.add(lblTitle, gbc);
+
+        gbc.gridwidth = 1;
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        gbc.gridy = 1; gbc.gridx = 0; formPanel.add(new JLabel("Room Number:"), gbc);
+        txtRoomNo = new JTextField(15); gbc.gridx = 1; formPanel.add(txtRoomNo, gbc);
+
+        gbc.gridy = 2; gbc.gridx = 0; formPanel.add(new JLabel("Availability:"), gbc);
+        cmbAvailable = new JComboBox<>(new String[]{"Available", "Occupied"});
+        gbc.gridx = 1; formPanel.add(cmbAvailable, gbc);
+
+        gbc.gridy = 3; gbc.gridx = 0; formPanel.add(new JLabel("Status:"), gbc);
+        cmbStatus = new JComboBox<>(new String[]{"Clean", "Dirty"});
+        gbc.gridx = 1; formPanel.add(cmbStatus, gbc);
+
+        gbc.gridy = 4; gbc.gridx = 0; formPanel.add(new JLabel("Price:"), gbc);
+        txtPrice = new JTextField(15); gbc.gridx = 1; formPanel.add(txtPrice, gbc);
+
+        gbc.gridy = 5; gbc.gridx = 0; formPanel.add(new JLabel("Bed Type:"), gbc);
+        cmbBedType = new JComboBox<>(new String[]{"Single", "Double"});
+        gbc.gridx = 1; formPanel.add(cmbBedType, gbc);
+
+        // Buttons
+        JPanel btnPanel = new JPanel(new GridLayout(2, 2, 10, 10));
+        btnPanel.setOpaque(false);
+        btnAdd = createStyledButton("Add Room");
+        btnUpdate = createStyledButton("Update");
+        btnDelete = createStyledButton("Delete");
+        btnBack = createStyledButton("Back");
+
+        btnPanel.add(btnAdd); btnPanel.add(btnUpdate);
+        btnPanel.add(btnDelete); btnPanel.add(btnBack);
+
+        gbc.gridy = 6; gbc.gridx = 0; gbc.gridwidth = 2;
+        gbc.insets = new Insets(30, 0, 0, 0);
+        formPanel.add(btnPanel, gbc);
+
+        // Right Panel: Table
+        JPanel tablePanel = new JPanel(new BorderLayout());
+        tablePanel.setOpaque(false);
+        String[] columns = {"Room No", "Availability", "Status", "Price", "Bed Type"};
+        tableModel = new DefaultTableModel(columns, 0);
         roomTable = new JTable(tableModel);
-        roomTable.setRowHeight(35);
-        roomTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        roomTable.setRowHeight(30);
+        roomTable.setOpaque(false);
+        roomTable.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        roomTable.setForeground(Color.WHITE);
+        roomTable.setGridColor(new Color(255, 255, 255, 50));
+        
         roomTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
-        roomTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        roomTable.getTableHeader().setBackground(new Color(25, 50, 100));
+        roomTable.getTableHeader().setForeground(Color.WHITE);
 
+        DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    c.setBackground(new Color(0, 0, 0, 100));
+                    c.setForeground(Color.WHITE);
+                } else {
+                    c.setBackground(new Color(0, 150, 255, 150));
+                    c.setForeground(Color.WHITE);
+                }
+                return c;
+            }
+        };
+        roomTable.setDefaultRenderer(Object.class, renderer);
+        
         JScrollPane scrollPane = new JScrollPane(roomTable);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
-        add(scrollPane, BorderLayout.CENTER);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        tablePanel.add(scrollPane, BorderLayout.CENTER);
+
+        splitPane.setLeftComponent(formPanel);
+        splitPane.setRightComponent(tablePanel);
+
+        mainCard.add(splitPane, BorderLayout.CENTER);
+        add(mainCard, new GridBagConstraints());
+
+        // Listeners
+        btnAdd.addActionListener(e -> handleAddRoom());
+        btnUpdate.addActionListener(e -> handleUpdateRoom());
+        btnDelete.addActionListener(e -> handleDeleteRoom());
+        btnBack.addActionListener(e -> {
+            Window win = SwingUtilities.getWindowAncestor(this);
+            if (win instanceof JFrame) {
+                // Return to dashboard logic or just clear
+                clearForm();
+            }
+        });
     }
 
-    private void filterTable(String query) {
-        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
-        roomTable.setRowSorter(sorter);
-        sorter.setRowFilter(RowFilter.regexFilter("(?i)" + query));
+    private void handleAddRoom() {
+        if (txtRoomNo.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter Room Number");
+            return;
+        }
+        try {
+            Room room = new Room();
+            room.setRoomNumber(txtRoomNo.getText());
+            room.setCategoryId(1); // Default category for now
+            room.setStatus(cmbAvailable.getSelectedItem().equals("Available") ? Room.Status.AVAILABLE : Room.Status.OCCUPIED);
+            
+            if (roomDAO.addRoom(room)) {
+                JOptionPane.showMessageDialog(this, "Room Added Successfully!");
+                loadRoomData();
+                clearForm();
+            } else {
+                JOptionPane.showMessageDialog(this, "Error adding room");
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + ex.getMessage());
+        }
+    }
+
+    private void handleUpdateRoom() {
+        int selectedRow = roomTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Select a room to update");
+            return;
+        }
+        try {
+            String roomNo = (String) tableModel.getValueAt(selectedRow, 0);
+            Room room = new Room();
+            room.setRoomNumber(roomNo);
+            room.setCategoryId(1);
+            room.setStatus(cmbAvailable.getSelectedItem().equals("Available") ? Room.Status.AVAILABLE : Room.Status.OCCUPIED);
+            
+            if (roomDAO.updateRoom(room)) {
+                JOptionPane.showMessageDialog(this, "Room Updated Successfully!");
+                loadRoomData();
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error updating room: " + ex.getMessage());
+        }
+    }
+
+    private void handleDeleteRoom() {
+        int selectedRow = roomTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Select a room to delete");
+            return;
+        }
+        String roomNo = (String) tableModel.getValueAt(selectedRow, 0);
+        int confirm = JOptionPane.showConfirmDialog(this, "Delete Room " + roomNo + "?", "Confirm", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                if (roomDAO.deleteRoom(roomNo)) {
+                    JOptionPane.showMessageDialog(this, "Room Deleted!");
+                    loadRoomData();
+                }
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Error deleting room: " + ex.getMessage());
+            }
+        }
+    }
+
+    private JButton createStyledButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setBackground(Color.BLACK);
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setPreferredSize(new Dimension(120, 35));
+        return btn;
+    }
+
+    private void clearForm() {
+        txtRoomNo.setText("");
+        txtPrice.setText("");
+        cmbRoomType.setSelectedIndex(0);
+        cmbBedType.setSelectedIndex(0);
     }
 
     private void loadRoomData() {
@@ -107,104 +246,14 @@ public class RoomManagementPanel extends JPanel {
         List<Room> rooms = roomDAO.getAllRooms();
         for (Room room : rooms) {
             tableModel.addRow(new Object[]{
-                    room.getRoomNumber(),
-                    room.getCategoryName(),
-                    room.getStatus()
+                room.getRoomNumber(),
+                room.getStatus().toString().toLowerCase(),
+                room.getStatus() == Room.Status.AVAILABLE ? "1000" : "1200", // Dummy price for visual
+                "Single",
+                "AC"
             });
         }
     }
-
-    private void handleDeleteRoom() {
-        int selectedRow = roomTable.getSelectedRow();
-        if (selectedRow == -1) {
-            JOptionPane.showMessageDialog(this, "Please select a room to delete");
-            return;
-        }
-
-        String roomNumber = (String) tableModel.getValueAt(selectedRow, 0);
-        int confirm = JOptionPane.showConfirmDialog(this, 
-            "Are you sure you want to delete Room " + roomNumber + "?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
-        
-        if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                if (roomDAO.deleteRoom(roomNumber)) {
-                    JOptionPane.showMessageDialog(this, "Room Deleted Successfully!");
-                    loadRoomData();
-                } else {
-                    JOptionPane.showMessageDialog(this, "Error: Could not delete room (It might have active bookings)");
-                }
-            } catch (SQLException e) {
-                JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-            }
-        }
-    }
-
-    private void showAddRoomDialog(Room existingRoom) {
-        String title = (existingRoom == null) ? "Add New Room" : "Update Room " + existingRoom.getRoomNumber();
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), title, true);
-        dialog.setLayout(new GridBagLayout());
-        dialog.setSize(400, 350);
-        dialog.setLocationRelativeTo(this);
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        JTextField txtRoomNo = new JTextField(15);
-        if (existingRoom != null) {
-            txtRoomNo.setText(existingRoom.getRoomNumber());
-            txtRoomNo.setEditable(false);
-        }
-
-        String[] categories = {"Standard", "Deluxe", "Suite"};
-        JComboBox<String> cmbCategory = new JComboBox<>(categories);
-        if (existingRoom != null) cmbCategory.setSelectedIndex(existingRoom.getCategoryId() - 1);
-
-        JComboBox<Room.Status> cmbStatus = new JComboBox<>(Room.Status.values());
-        if (existingRoom != null) cmbStatus.setSelectedItem(existingRoom.getStatus());
-
-        JButton btnSave = new JButton((existingRoom == null) ? "Save Room" : "Update Room");
-        btnSave.setBackground(new Color(63, 81, 181));
-        btnSave.setForeground(Color.WHITE);
-
-        gbc.gridx = 0; gbc.gridy = 0; dialog.add(new JLabel("Room Number:"), gbc);
-        gbc.gridx = 1; dialog.add(txtRoomNo, gbc);
-        gbc.gridx = 0; gbc.gridy = 1; dialog.add(new JLabel("Category:"), gbc);
-        gbc.gridx = 1; dialog.add(cmbCategory, gbc);
-        gbc.gridx = 0; gbc.gridy = 2; dialog.add(new JLabel("Status:"), gbc);
-        gbc.gridx = 1; dialog.add(cmbStatus, gbc);
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; dialog.add(btnSave, gbc);
-
-        btnSave.addActionListener(e -> {
-            try {
-                String roomNo = txtRoomNo.getText().trim();
-                if (roomNo.isEmpty()) {
-                    JOptionPane.showMessageDialog(dialog, "Room Number cannot be empty!");
-                    return;
-                }
-
-                Room room = (existingRoom == null) ? new Room() : existingRoom;
-                room.setRoomNumber(roomNo);
-                room.setCategoryId(cmbCategory.getSelectedIndex() + 1);
-                room.setStatus((Room.Status) cmbStatus.getSelectedItem());
-
-                boolean success;
-                if (existingRoom == null) {
-                    success = roomDAO.addRoom(room);
-                } else {
-                    success = roomDAO.updateRoom(room);
-                }
-
-                if (success) {
-                    JOptionPane.showMessageDialog(dialog, "Room saved successfully!");
-                    dialog.dispose();
-                    loadRoomData();
-                }
-            } catch (SQLException ex) {
-                JOptionPane.showMessageDialog(dialog, "Error: " + ex.getMessage());
-            }
-        });
-
-        dialog.setVisible(true);
-    }
 }
+
+
